@@ -130,3 +130,6 @@ dmypy.json
 
 # credentials
 credentials.sh
+
+# docker image
+mention-checker-bot.tar.gz

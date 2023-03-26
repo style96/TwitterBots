@@ -165,7 +165,7 @@ def set_rules():
 
 
 
-def get_media_list(referenced_tweet_ids):
+def get_media_list(referenced_tweet_ids, tweet):
     response = client.get_tweets(
             referenced_tweet_ids,
             expansions=expansions,
@@ -176,7 +176,7 @@ def get_media_list(referenced_tweet_ids):
     media_list = parse_tweet(response)
     for media in media_list:
         if media.get("media_type") == "video":
-            media.update({"requested_username": self.author_username}) # TODO self kaldırılacak yerine tweet id konulacak.
+            media.update({"requested_username": tweet.author_id}) # TODO self kaldırılacak yerine tweet id konulacak.
             logger.info(media)
             j_media = json.dumps(media)
             s_tweet_id = str(media.get("tweet_id"))
@@ -196,7 +196,7 @@ def get_media_list(referenced_tweet_ids):
             if r.ok == True:
                 # reply tweet
                 response = client.create_tweet(
-                    text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}", in_reply_to_tweet_id=tweet.id, exclude_reply_user_ids=[self.me_id]
+                    text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}", in_reply_to_tweet_id=tweet.id, exclude_reply_user_ids=[1617475758951112704]
                 )
                 logger.info(response)
             # request.urlretrieve(media.get("url"),f'/home/halil/Projects/twitter_bots/depo/medias/python1.mp4') #download link
@@ -221,14 +221,10 @@ def check_mentions(api, keywords, last_mention_id):
                     logger.info(referenced_tweet.id)
                     if(referenced_tweet["type"] == 'replied_to'):
                         referenced_tweet_ids.append(referenced_tweet.id)
-                get_media_list(referenced_tweet_ids= referenced_tweet_ids)
+                get_media_list(referenced_tweet_ids= referenced_tweet_ids, tweet= mention)
                 logger.info(f"Answering to {mention.author_id}")	
                 print(mention.text)
                 last_mention_id = max(mention.id, last_mention_id)
-                api.update_status(
-                    status="Thanks for mentioning me!",
-                    in_reply_to_status_id=mention.id,
-                )
     return last_mention_id
 
 
@@ -240,6 +236,7 @@ def main():
     user_id = user[0].id #1617475758951112704
     """
     last_mention_id = 1
+    
     mentions = client.get_users_mentions(1617475758951112704, since_id = last_mention_id,
     expansions=expansions,
         media_fields=media_fields,

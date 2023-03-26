@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # tweepy-bots/bots/mentionChecker.py
 
+import time
 import tweepy
 import logging
 from config import create_api, create_client, create_streaming_client
@@ -163,19 +164,98 @@ def set_rules():
     logger.info(f"Set rule: {response}")
 
 
-def main():
-    stream = MentionTweetListener(streaming_client.bearer_token)
-    rules = get_rules()
-    delete_rules(rules)
-    set_rules()
-    # Starting stream
-    stream.filter(
+
+def get_media_list(referenced_tweet_ids):
+    response = client.get_tweets(
+            referenced_tweet_ids,
+            expansions=expansions,
+            media_fields=media_fields,
+            tweet_fields=tweet_fields,
+            user_fields=user_fields,
+        )
+    media_list = parse_tweet(response)
+    for media in media_list:
+        if media.get("media_type") == "video":
+            media.update({"requested_username": self.author_username}) # TODO self kaldırılacak yerine tweet id konulacak.
+            logger.info(media)
+            j_media = json.dumps(media)
+            s_tweet_id = str(media.get("tweet_id"))
+            myObj = {"title": s_tweet_id, "content": j_media, "slug": s_tweet_id, "status": "publish"}
+            url = "http://localhost/kodlamayabasla/wp-json/wp/v2/tweets"
+            login_id = "style93"
+            login_pwd = "DhrE N6XR gNF2 x4LL DLrg XWDd"
+            r = requests.get(url + "?_fields=slug", auth=(login_id, login_pwd))
+            if r.status_code == 200:
+                r_json = r.json()
+                for slug in r_json:
+                    logger.info(slug["slug"])
+                    if slug["slug"] == s_tweet_id:
+                        return
+
+            r = requests.post(url, json=myObj, auth=(login_id, login_pwd))
+            if r.ok == True:
+                # reply tweet
+                response = client.create_tweet(
+                    text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}", in_reply_to_tweet_id=tweet.id, exclude_reply_user_ids=[self.me_id]
+                )
+                logger.info(response)
+            # request.urlretrieve(media.get("url"),f'/home/halil/Projects/twitter_bots/depo/medias/python1.mp4') #download link
+            
+def check_mentions(api, keywords, last_mention_id):
+    logger.info("Retrieving mentions")
+    # Get new tweets
+    mentions = client.get_users_mentions(1617475758951112704, since_id = last_mention_id,
         expansions=expansions,
         media_fields=media_fields,
         tweet_fields=["referenced_tweets", "entities"],
-        user_fields=["username"],
-    )
+        user_fields=["username"],)
+    # Iterate through mentions and reply to each mention
+    if mentions[0] is None : return
+    for mention in reversed(mentions[0]):
+        if mention.referenced_tweets == None:
+            return
+        if mention.id > last_mention_id:
+            if any(keyword in mention.text.lower() for keyword in keywords):
+                referenced_tweet_ids = []                     
+                for referenced_tweet in mention.referenced_tweets:
+                    logger.info(referenced_tweet.id)
+                    if(referenced_tweet["type"] == 'replied_to'):
+                        referenced_tweet_ids.append(referenced_tweet.id)
+                get_media_list(referenced_tweet_ids= referenced_tweet_ids)
+                logger.info(f"Answering to {mention.author_id}")	
+                print(mention.text)
+                last_mention_id = max(mention.id, last_mention_id)
+                api.update_status(
+                    status="Thanks for mentioning me!",
+                    in_reply_to_status_id=mention.id,
+                )
+    return last_mention_id
 
+
+def main():
+    bearer_token = streaming_client.bearer_token
+    client = tweepy.Client(streaming_client.bearer_token)
+    """
+    user = client.get_user(username="BotToSave")
+    user_id = user[0].id #1617475758951112704
+    """
+    last_mention_id = 1
+    mentions = client.get_users_mentions(1617475758951112704, since_id = last_mention_id,
+    expansions=expansions,
+        media_fields=media_fields,
+        tweet_fields=["referenced_tweets", "entities"],
+        user_fields=["username"],)
+    print(mentions)
+    
+    for mention in mentions[0]:
+        last_mention_id = max(mention.id, last_mention_id)
+    
+    keywords = ["download"]
+    while True:
+        last_mention_id = check_mentions(client, keywords, last_mention_id)
+        logger.info("Waiting...")
+        time.sleep(60)
+    
 
 if __name__ == "__main__":
     main()

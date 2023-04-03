@@ -19,7 +19,6 @@ def parse_tweet(tweet):
         urls = set()
         media_list = []
         media_infos = dict()
-        if medias is None : return
         for media in medias:
             media_type = media.get("type")
             content_type = None

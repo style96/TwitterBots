@@ -72,7 +72,7 @@ class MentionTweetListener(tweepy.StreamingClient):
         for referenced_tweet in tweet.referenced_tweets:
             logger.info(referenced_tweet.id)
             referenced_tweet_ids.append(referenced_tweet.id)
-        
+
         response = client.get_tweets(
             referenced_tweet_ids,
             expansions=expansions,
@@ -103,7 +103,9 @@ class MentionTweetListener(tweepy.StreamingClient):
                 if r.ok == True:
                     # reply tweet
                     response = client.create_tweet(
-                        text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}", in_reply_to_tweet_id=tweet.id, exclude_reply_user_ids=[self.me_id]
+                        text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}",
+                        in_reply_to_tweet_id=tweet.id,
+                        exclude_reply_user_ids=[self.me_id],
                     )
                     logger.info(response)
                 # request.urlretrieve(media.get("url"),f'/home/halil/Projects/twitter_bots/depo/medias/python1.mp4') #download link
@@ -136,11 +138,13 @@ def isMentionedMe(tweet, username):
             return False
         return True
 
+
 # get rules
 def get_rules():
     rules = streaming_client.get_rules()
     logger.info(f"Stream rules: {rules} ")
     return rules.data
+
 
 # delete rules
 def delete_rules(rules):
@@ -164,19 +168,20 @@ def set_rules():
     logger.info(f"Set rule: {response}")
 
 
-
 def get_media_list(referenced_tweet_ids, tweet):
     response = client.get_tweets(
-            referenced_tweet_ids,
-            expansions=expansions,
-            media_fields=media_fields,
-            tweet_fields=tweet_fields,
-            user_fields=user_fields,
-        )
+        referenced_tweet_ids,
+        expansions=expansions,
+        media_fields=media_fields,
+        tweet_fields=tweet_fields,
+        user_fields=user_fields,
+    )
     media_list = parse_tweet(response)
+    if media_list is None:
+        return
     for media in media_list:
         if media.get("media_type") == "video":
-            media.update({"requested_username": tweet.author_id}) # TODO self kaldırılacak yerine tweet id konulacak.
+            media.update({"requested_username": tweet.author_id})  # TODO self kaldırılacak yerine tweet id konulacak.
             logger.info(media)
             j_media = json.dumps(media)
             s_tweet_id = str(media.get("tweet_id"))
@@ -196,36 +201,42 @@ def get_media_list(referenced_tweet_ids, tweet):
             if r.ok == True:
                 # reply tweet
                 response = client.create_tweet(
-                    text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}", in_reply_to_tweet_id=tweet.id, exclude_reply_user_ids=[1617475758951112704]
+                    text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}",
+                    in_reply_to_tweet_id=tweet.id,
+                    exclude_reply_user_ids=[1617475758951112704],
                 )
                 logger.info(response)
             # request.urlretrieve(media.get("url"),f'/home/halil/Projects/twitter_bots/depo/medias/python1.mp4') #download link
-            
+
+
 def check_mentions(api, keywords, last_mention_id):
-    logger.info("Retrieving mentions")
-    # Get new tweets
-    mentions = client.get_users_mentions(1617475758951112704, since_id = last_mention_id,
-        expansions=expansions,
-        media_fields=media_fields,
-        tweet_fields=["referenced_tweets", "entities"],
-        user_fields=["username"],)
-    # Iterate through mentions and reply to each mention
-    if mentions[0] is None : return
-    for mention in reversed(mentions[0]):
-        if mention.referenced_tweets == None:
-            return
-        if mention.id > last_mention_id:
-            if any(keyword in mention.text.lower() for keyword in keywords):
-                referenced_tweet_ids = []                     
-                for referenced_tweet in mention.referenced_tweets:
-                    logger.info(referenced_tweet.id)
-                    if(referenced_tweet["type"] == 'replied_to'):
-                        referenced_tweet_ids.append(referenced_tweet.id)
-                get_media_list(referenced_tweet_ids= referenced_tweet_ids, tweet= mention)
-                logger.info(f"Answering to {mention.author_id}")	
-                print(mention.text)
-                last_mention_id = max(mention.id, last_mention_id)
-    return last_mention_id
+    try:
+        logger.info("Retrieving mentions")
+        # Get new tweets
+        mentions = api.get_users_mentions(
+            1617475758951112704,
+            since_id=last_mention_id,
+            expansions=expansions,
+            media_fields=media_fields,
+            tweet_fields=["referenced_tweets", "entities"],
+            user_fields=["username"],
+        )
+        # Iterate through mentions and reply to each mention
+        for mention in reversed(mentions[0]):
+            if mention.id > last_mention_id:
+                if any(keyword in mention.text.lower() for keyword in keywords):
+                    referenced_tweet_ids = []
+                    for referenced_tweet in mention.referenced_tweets:
+                        logger.info(referenced_tweet.id)
+                        if referenced_tweet["type"] == "replied_to":
+                            referenced_tweet_ids.append(referenced_tweet.id)
+                    get_media_list(referenced_tweet_ids=referenced_tweet_ids, tweet=mention)
+                    logger.info(f"Answering to {mention.author_id}")
+                    print(mention.text)
+                    last_mention_id = max(mention.id, last_mention_id)
+        return last_mention_id
+    except:
+        return last_mention_id
 
 
 def main():
@@ -236,23 +247,28 @@ def main():
     user_id = user[0].id #1617475758951112704
     """
     last_mention_id = 1
-    
-    mentions = client.get_users_mentions(1617475758951112704, since_id = last_mention_id,
-    expansions=expansions,
+
+    mentions = client.get_users_mentions(
+        1617475758951112704,
+        since_id=last_mention_id,
+        expansions=expansions,
         media_fields=media_fields,
         tweet_fields=["referenced_tweets", "entities"],
-        user_fields=["username"],)
+        user_fields=["username"],
+    )
     print(mentions)
-    
+
     for mention in mentions[0]:
         last_mention_id = max(mention.id, last_mention_id)
-    
+
     keywords = ["download"]
     while True:
         last_mention_id = check_mentions(client, keywords, last_mention_id)
         logger.info("Waiting...")
         time.sleep(60)
-    
+        if last_mention_id is None:
+            last_mention_id = 1
+
 
 if __name__ == "__main__":
     main()

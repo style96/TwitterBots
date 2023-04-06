@@ -130,6 +130,7 @@ dmypy.json
 
 # credentials
 credentials.sh
+credentials.bat
 
 # docker image
 mention-checker-bot.tar.gz

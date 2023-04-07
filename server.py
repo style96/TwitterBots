@@ -1,6 +1,6 @@
 from os import environ
 from flask import Flask
-import bots.mentionChecker_stream
+import bots.dedicated.mentionChecker_stream
 
 app = Flask(__name__)
 

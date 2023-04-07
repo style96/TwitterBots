@@ -38,34 +38,44 @@ def get_media_list(referenced_tweet_ids, tweet):
             j_media = json.dumps(media)
             s_tweet_id = str(media.get("tweet_id"))
             myObj = {"title": s_tweet_id, "content": j_media, "slug": s_tweet_id, "status": "publish"}
-            url = "http://localhost/kodlamayabasla/wp-json/wp/v2/tweets"
+            url = "https://kodlamayabasla.com/wp-json/wp/v2/tweets"
             login_id = "style93"
-            login_pwd = "DhrE N6XR gNF2 x4LL DLrg XWDd"
-            logger.info(f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}")
+            login_pwd = "xeAX hBWC 5wwm umrw jQbq rcl3"
+            logger.info(f"Download link is https://kodlamayabasla.com/tweets/{s_tweet_id}")
             try: 
                 r = requests.get(url + "?_fields=slug", auth=(login_id, login_pwd))
+                logger.info(f"r.status_code : {r.status_code}")
                 if r.status_code == 200:
                     r_json = r.json()
                     for slug in r_json:
                         logger.info(f"slug : {slug['slug']}")
                         if slug["slug"] == s_tweet_id:
+                            response = client.create_tweet(
+                                text=f"Download link is https://kodlamayabasla.com/tweets/{s_tweet_id}",
+                                in_reply_to_tweet_id=tweet.id,
+                                exclude_reply_user_ids=[1617475758951112704],
+                            )
+                            logger.info(response)
                             return
-            except:
+            except Exception as e:
                 # TODO error exception
+                logger.info(f"exeption on get tweets request : {e}")
                 return
 
             try:
                 r = requests.post(url, json=myObj, auth=(login_id, login_pwd))
+                logger.info(f"r.ok : {r.ok}")
                 if r.ok == True:
                     # reply tweet
                     response = client.create_tweet(
-                        text=f"Download link is http://localhost/kodlamayabasla/tweets/{s_tweet_id}",
+                        text=f"Download link is https://kodlamayabasla.com/tweets/{s_tweet_id}",
                         in_reply_to_tweet_id=tweet.id,
                         exclude_reply_user_ids=[1617475758951112704],
                     )
                     logger.info(response)
-            except:
+            except Exception as e:
                 # TODO error exception
+                logger.info(f"exeption on create tweet request : {e}")
                 return
             # request.urlretrieve(media.get("url"),f'/home/halil/Projects/twitter_bots/depo/medias/python1.mp4') #download link
 

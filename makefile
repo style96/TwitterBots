@@ -1,2 +1,2 @@
 start:
-	python ./bots/mentionChecker_stream.py
+	python ./bots/mentionChecker.py
